@@ -15,14 +15,14 @@ let MEMBER_LIST_URL = "https://my.api.mockaroo.com/members_with_avatar.json?key=
 class ViewController: UIViewController {
     @IBOutlet var timerLabel: UILabel!
     @IBOutlet var editView: UITextView!
-
+    
     override func viewDidLoad() {
         super.viewDidLoad()
         Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { [weak self] _ in
             self?.timerLabel.text = "\(Date().timeIntervalSince1970)"
         }
     }
-
+    
     private func setVisibleWithAnimation(_ v: UIView?, _ s: Bool) {
         guard let v = v else { return }
         UIView.animate(withDuration: 0.3, animations: { [weak v] in
@@ -31,20 +31,75 @@ class ViewController: UIViewController {
             self?.view.layoutIfNeeded()
         })
     }
-
-    // MARK: SYNC
-
+    
+    func downloadJSon(_ url: String, _ completion: @escaping (String?) -> Void) {
+        DispatchQueue.global().async {
+            let url = URL(string: url)!
+            let data = try! Data(contentsOf: url)
+            let json = String(data: data, encoding: .utf8)
+            DispatchQueue.main.async {
+                completion(json)
+            }
+        }
+    }
+    
+    // 1. 비동기로 생기는 데이터를 Observable로 감싸서 리턴하는 방법
+    func downloadJson(_ url: String) -> Observable<String?> {
+        return Observable.create { emitter in
+            let url = URL(string: url)!
+            let task = URLSession.shared.dataTask(with: url) { (data, _, err) in
+                guard err == nil else {
+                    emitter.onError(err!)
+                    return
+                }
+                
+                if let dat = data, let json = String(data: dat, encoding: .utf8) {
+                    emitter.onNext(json)
+                }
+                
+                emitter.onCompleted()
+            }
+            
+            task.resume()
+            
+            return Disposables.create {
+                task.cancel()
+            }
+        }
+    }
+    
+    func getString() -> Observable<String?> {
+        return Observable.just("Hellow Wolrd")
+    }
+    
     @IBOutlet var activityIndicator: UIActivityIndicatorView!
-
+    
     @IBAction func onLoad() {
         editView.text = ""
-        setVisibleWithAnimation(activityIndicator, true)
-
-        let url = URL(string: MEMBER_LIST_URL)!
-        let data = try! Data(contentsOf: url)
-        let json = String(data: data, encoding: .utf8)
-        self.editView.text = json
+        self.setVisibleWithAnimation(self.activityIndicator, true)
         
-        self.setVisibleWithAnimation(self.activityIndicator, false)
+        // 2. Obervable로 오는 데이터를 사용하는 방법
+//        downloadJson(MEMBER_LIST_URL)
+//            .subscribe { event in
+//                switch event {
+//                case .next(let json):
+//                    DispatchQueue.main.async {
+//                        self.editView.text = json
+//                        self.setVisibleWithAnimation(self.activityIndicator, false)
+//                    }
+//                case .completed:
+//                    break
+//                case .error(_):
+//                    break
+//                }
+//            }
+        
+        _ = downloadJson(MEMBER_LIST_URL)
+            .observeOn(MainScheduler.instance) // sugar : operator
+            .subscribe(onNext: { json in
+                self.editView.text = json
+                self.setVisibleWithAnimation(self.activityIndicator, false)
+            })
+        
     }
 }
