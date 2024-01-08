@@ -65,23 +65,12 @@ class ViewController: UIViewController {
             return Disposables.create {
                 task.cancel()
             }
-            
         }
-        
-        //        return Observable.create { f in
-        //            DispatchQueue.global().async {
-        //                let url = URL(string: url)!
-        //                let data = try! Data(contentsOf: url)
-        //                let json = String(data: data, encoding: .utf8)
-        //
-        //                DispatchQueue.main.async {
-        //                    f.onNext(json)
-        //                }
-        //            }
-        //            return Disposables.create()
-        //        }
     }
     
+    func getString() -> Observable<String?> {
+        return Observable.just("Hellow Wolrd")
+    }
     
     @IBOutlet var activityIndicator: UIActivityIndicatorView!
     
@@ -90,36 +79,27 @@ class ViewController: UIViewController {
         self.setVisibleWithAnimation(self.activityIndicator, true)
         
         // 2. Obervable로 오는 데이터를 사용하는 방법
-        downloadJson(MEMBER_LIST_URL)
-            .subscribe { event in
-                switch event {
-                case .next(let json):
-                    DispatchQueue.main.async {
-                        self.editView.text = json
-                        self.setVisibleWithAnimation(self.activityIndicator, false)
-                    }
-                case .completed:
-                    break
-                case .error(_):
-                    break
-                }
-            }
+//        downloadJson(MEMBER_LIST_URL)
+//            .subscribe { event in
+//                switch event {
+//                case .next(let json):
+//                    DispatchQueue.main.async {
+//                        self.editView.text = json
+//                        self.setVisibleWithAnimation(self.activityIndicator, false)
+//                    }
+//                case .completed:
+//                    break
+//                case .error(_):
+//                    break
+//                }
+//            }
         
-        //        let observable = downloadJson(MEMBER_LIST_URL)
-        //        let disposable = observable.subscribe { event in
-        //            switch event {
-        //            case .next(let json):
-        //                DispatchQueue.main.async {
-        //                    self.editView.text = json
-        //                    self.setVisibleWithAnimation(self.activityIndicator, false)
-        //                }
-        //            case .completed:
-        //                break
-        //            case .error(_):
-        //                break
-        //            }
-        //        }
+        _ = downloadJson(MEMBER_LIST_URL)
+            .observeOn(MainScheduler.instance) // sugar : operator
+            .subscribe(onNext: { json in
+                self.editView.text = json
+                self.setVisibleWithAnimation(self.activityIndicator, false)
+            })
         
     }
 }
-
